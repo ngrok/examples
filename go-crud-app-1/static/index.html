@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+    <style>
+        #messages {
+            max-height: 300px;
+            overflow-y: scroll;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chat App</h1>
+    <div id="messages"></div>
+    <input type="text" id="username" placeholder="Username">
+    <input type="text" id="message" placeholder="Message" onkeydown="handleKeyDown(event)">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        // Load past messages
+        fetch('/past_messages')
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(message => {
+                    displayMessage(message);
+                });
+            });
+
+        // Start receiving new messages
+        function startReceivingMessages() {
+            fetch('/receive')
+                .then(response => response.json())
+                .then(message => {
+                    displayMessage(message);
+                    startReceivingMessages();  // Keep receiving new messages
+                })
+                .catch(err => {
+                    console.log("Error receiving messages:", err);
+                    setTimeout(startReceivingMessages, 1000);  // Retry after 1 second in case of error
+                });
+        }
+
+        startReceivingMessages();
+
+        function sendMessage() {
+            const username = document.getElementById("username").value;
+            const message = document.getElementById("message").value;
+
+            const chatMessage = {
+                username: username,
+                content: message
+            };
+
+            fetch('/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(chatMessage)
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error("Error sending message");
+                }
+
+                document.getElementById("message").value = "";
+            }).catch(err => {
+                console.log("Error sending message:", err);
+            });
+        }
+
+        function displayMessage(message) {
+            const messagesDiv = document.getElementById("messages");
+
+            const messageDiv = document.createElement("div");
+            messageDiv.innerHTML = `<strong>${message.username}: </strong>${message.content}`;
+
+            messagesDiv.appendChild(messageDiv);
+        }
+
+        function handleKeyDown(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+    </script>
+</body>
+</html>
